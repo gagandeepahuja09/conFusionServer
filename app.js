@@ -10,6 +10,19 @@ var dishRouter = require('./routes/dishRouter');
 var leaderRouter = require('./routes/leaderRouter');
 var promoRouter = require('./routes/promoRouter');
 
+const mongoose = require('mongoose');
+
+const Dishes = require('./models/dishes');
+
+const url = 'mongodb://localhost:27017/conFusion';
+const connect = mongoose.connect(url);
+
+connect.then((db) => {
+	console.log('Connected correctly to the server');
+}, (err) => {
+	console.log(err);
+});
+
 var app = express();
 
 // view engine setup
@@ -20,6 +33,45 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+
+function auth(req, res, next) {
+	console.log(req.headers);
+
+	var authHeader = req.headers.authorization;
+
+	// If authorization body is empty
+	if(!authHeader) {
+		var err = new Error('You are not authenticated!');
+
+		res.setHeader('WWW-Authenticate', 'Basic');
+		err.status = 401;
+		next(err);
+	}
+	// first element would be the word Basic
+	// we don't need that
+	// : separates the username and password
+	var auth = new Buffer(authHeader.split(' ')[1], 'base64')
+	.toString().split(':');
+
+	var username = auth[0];
+	var password = auth[1];
+
+	if(username === 'admin' && password === 'password') {
+		// request will pass to next middleware
+		next();
+	}
+	else {
+		var err = new Error('You are not authenticated!');
+
+		res.setHeader('WWW-Authenticate', 'Basic');
+		err.status = 401;
+		next(err);		
+	}
+}
+
+//Before serving static pages & b4 all these routes we need to authorize
+app.use(auth);
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
