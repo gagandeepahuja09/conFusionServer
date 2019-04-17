@@ -3,6 +3,8 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+var session = require('express-session');
+var FileStore = require('session-file-store')(session);
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -11,9 +13,7 @@ var leaderRouter = require('./routes/leaderRouter');
 var promoRouter = require('./routes/promoRouter');
 
 const mongoose = require('mongoose');
-
 const Dishes = require('./models/dishes');
-
 const url = 'mongodb://localhost:27017/conFusion';
 const connect = mongoose.connect(url);
 
@@ -32,17 +32,22 @@ app.set('view engine', 'jade');
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser('12345-67890-09876-54321'));
+// app.use(cookieParser('12345-67890-09876-54321'));
+app.use(session({
+	name: 'session-id',
+	secret: '12345-67890-09876-54321',
+	saveUnitialized: false,
+	resave: false,
+	store: new FileStore(),
+}));
 
 function auth(req, res, next) {
-	console.log(req.headers);
-
-	var authHeader = req.headers.authorization;
+	console.log(req.session);
 
 	// If there is no user of cookie
 	// Basically logged out
-	if(!req.signedCookies.user) {
-		var authHeader = req.cookies.authorization;
+	if(!req.session.user) {
+		var authHeader = req.session.authorization;
 		// If authorization body is empty
 		// User is not logged in.
 		if(!authHeader) {
@@ -62,8 +67,8 @@ function auth(req, res, next) {
 		var password = auth[1];
 
 		if(username === 'admin' && password === 'password') {
-		// Set up the cookie => Log him in for some time(till expires)
-			res.cookie('user', 'admin', { signed : true });
+		// Set up the session => Log him in for some time(till expires)
+			res.session.user = 'admin';
 			next(); // Authorized so go to next middleware
 		}
 		else {
@@ -77,7 +82,7 @@ function auth(req, res, next) {
 	// User property of cookie exists
 	else {
 		// Check the username
-		if(req.signedCookies.user == 'admin') {
+		if(req.session.user == 'admin') {
 			next();
 		}
 		else {
