@@ -1,5 +1,6 @@
 var express = require('express');
 const bodyParser = require('body-parser');
+var User = require('../models/user');
 
 var router = express.Router();
 router.user(body-parser.json());
@@ -92,8 +93,21 @@ router.post('/login', (req, res, next) => {
 
 // Previous 2 were post but this is get we do not need to supply username
 // and password as server is already tracking us.
+// Since express session will already have all the information.
 router.get('/logout', (req, res, next) => {
-
+	// If user is logged in
+	if(req.session) {
+		// Destroy the session on client side
+		req.session.destroy();
+		// Clear the cookie on server side
+		res.clearCookie('session-id');
+		res.redirect('/');
+	}
+	else {
+		var err = new Error('You are not logged in');
+		err.status = 403;
+		next(err);
+	}
 });
 
 module.exports = router;
